@@ -4,17 +4,28 @@
 
 To make cross-platform developing consistent, efficient and more enjoyable, I start to find some cross-platform alternatives to meet my daily development workflow. Here is the result of my selections for "learn once, use anywhere", and I would like to share them with you.
 
-我日常会使用 Windows、Linux（WSL2）、MacOS 进行开发和日常娱乐等活动，也希望跨平台用到的开发工具尽可能保持一致、高效和愉悦的体验。因此，我开始寻找能满足我日常开发工作流的跨平台替代。这里就是我为了达成“learn once， use anywhere”效果所做的选择，我使用了一段时间觉得真不错，也想和你们一起分享这些工具。当然，我还在逐渐完善这套工具集的过程中，其中有些工具在部分平台尚未达到平替效果、或有的工具本身功能还在建设过程中，但都有一定的潜力，我愿意现在就学习和使用他们承担一部分日常使用场景。
+我日常会使用 Windows、Linux（Native & WSL2）、macOS 进行开发和日常娱乐等活动，也希望跨平台用到的开发工具尽可能保持一致、高效和愉悦的体验。因此，我开始寻找能满足我日常开发工作流的跨平台替代。这里就是我为了达成“learn once， use anywhere”效果所做的选择，我使用了一段时间觉得真不错，也想和你们一起分享这些工具。当然，我还在逐渐完善这套工具集的过程中，其中有些工具在部分平台尚未达到平替效果、或有的工具本身功能还在建设过程中，但都有一定的潜力，我愿意现在就学习和使用他们承担一部分日常使用场景。
 
 这里是所有工具的预览：
+- symlink manager (改进中)
 - rust-lang + cargo
 - nushell
 - helix editor
+- `zoxide`, `fzf`, `yazi`, `fd`
+- `mise`, `uv`
+- wezterm
 
 本文不会包含习以为常的跨平台开发工具，如：
 - git
 - vscode
-- vim/emacs
+- vim & emacs
+- ...
+
+也不会包含非跨全平台的开发工具，如：
+- tmux & itmux & zellij
+- bash & zsh & fish shell
+- Cygwin & MSYS2 & MinGW
+- ...
 
 ## 系统配置
 
