@@ -1,9 +1,13 @@
-set windows-shell := ["powershell.exe", "-c"]
+# set windows-shell := ["powershell.exe", "-c"]
+set windows-shell := ["nu", "-c"]
 
 # canary recipe
 [private]
 default:
   @just --list
+
+c:
+  npx gitmoji-cli -c
 
 [unix]
 symlink:
