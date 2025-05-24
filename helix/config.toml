@@ -1,0 +1,40 @@
+# https://docs.helix-editor.com/configuration.html
+
+
+# == customize configuration
+# 1. `hx -c $path_to_custom_config.toml`
+# 2. $PROJECT_ROOT/.helix/
+# 3. $XDG_CONFIG_HOME/.helix/
+# https://github.com/helix-editor/helix/pull/5748
+# https://github.com/helix-editor/helix/issues/5919
+
+theme = "catppuccin_frappe"
+
+
+[editor]
+
+# for the theme under WSL2 in Windows Terminal may occur into error:
+# https://github.com/helix-editor/helix/discussions/8031
+true-color = true
+
+line-number = "relative"
+mouse = false
+
+
+[editor.cursor-shape]
+insert = "bar"
+normal = "block"
+select = "underline"
+
+
+[editor.file-picker]
+hidden = false
+
+# how to handle buffer conflicting with externally formatting cli
+# https://docs.helix-editor.com/editor.html#editorauto-save-section
+# https://github.com/helix-editor/helix/issues/1125
+# https://github.com/helix-editor/helix/pull/2653
+# [editor.auto-save]
+# after-delay.enable = true
+
+# end of file

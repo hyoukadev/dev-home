@@ -1,0 +1,25 @@
+# target: real path
+# source: path to create symlink
+
+[[symlinks]]
+target = "helix"
+source = "temp/helix"
+
+[[symlinks]]
+target = "temp/file.txt"
+source = "temp/hello/rename.txt"
+
+[[symlinks]]
+target = "tmux"
+source = "$HOME/.tmux"
+
+[[symlinks]]
+target = "Rime"
+source = "$XDG_CONFIG_HOME/Rime"
+filter = { os = ["windows", "linux"] }
+
+[[symlinks]]
+target = "Rime"
+source = "$HOME/Library/Rime"
+filter = { os = ["mac"] }
+

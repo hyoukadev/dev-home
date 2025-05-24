@@ -1,0 +1,46 @@
+# built-in default languages settings:
+# https://github.com/helix-editor/helix/blob/master/languages.toml
+
+# related docs:
+# https://docs.helix-editor.com/lang-support.html
+# https://docs.helix-editor.com/languages.html
+# https://docs.helix-editor.com/guides/adding_languages.html
+# 
+# 🌟 mainly see this doc to install lsp, then the built-in languages.toml will work automatically
+# https://github.com/helix-editor/helix/wiki/Language-Server-Configurations
+
+# == Rules
+# settings in this file will overrides the specific `key` with the `value` here
+# instead of the entire `table`
+# the definitions of `key`, `value`, `table` for toml: https://toml.io/
+
+# == Support other features
+# ✅ EditorConfig https://github.com/helix-editor/helix/pull/13056
+# 
+
+# = Specific Languages
+# == Typst
+[language-server.tinymist]
+command = "tinymist"
+
+[[language]]
+name = "typst"
+language-servers = ["tinymist"]
+
+
+# == YAML
+[language-server.yaml-language-server.config.yaml]
+format = { enable = true }
+validation = true
+
+[language-server.yaml-language-server.config.yaml.schemas]
+"https://json.schemastore.org/github-workflow.json" = ".github/workflows/*.{yml,yaml}"
+"https://raw.githubusercontent.com/ansible-community/schemas/main/f/ansible-tasks.json" = "roles/{tasks,handlers}/*.{yml,yaml}"
+
+
+# == MarkDown: oxide will be applied automatically by helix editor
+# [[language]]
+# name = "markdown"
+# language-servers = [ "markdown-oxide" ]
+
+# end of file
