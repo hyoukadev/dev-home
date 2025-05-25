@@ -61,9 +61,6 @@ if ($env.TERM_PROGRAM? == "WezTerm") {
 }
 
 
-# setup alias
-alias cls = clear
-
 # WSL2
 # https://github.com/nushell/nushell/issues/5068
 # if () { alias } seems not work, the aliases can not be found with `help aliases`
@@ -78,6 +75,23 @@ alias cls = clear
 source ./helpers/git.nu
 source ./helpers/python_uv.nu
 source ./themes/catppuccin_frappe.nu
+
+
+# setup alias
+alias cls = clear
+
+
+const MACOS_SPECIAL_SCRIPT = "./helpers/macos.nu"
+const WINDOWS_SPECIAL_SCRIPT = "./helpers/windows.nu"
+
+# https://www.nushell.sh/blog/2023-09-19-nushell_0_85_0.html#improvements-to-parse-time-evaluation
+const OS_SPECIAL_SCRIPT = if ($nu.os-info.name == "windows") {
+	$WINDOWS_SPECIAL_SCRIPT
+} else if ($nu.os-info.name == "macos") {
+	$MACOS_SPECIAL_SCRIPT
+}
+
+source $OS_SPECIAL_SCRIPT
 
 
 # end of file

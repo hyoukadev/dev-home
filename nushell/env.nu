@@ -17,47 +17,26 @@
 # You can remove these comments if you want or leave
 # them for future reference.
 
-use std/util "path add"
+const MACOS_SPECIAL_SCRIPT = "./inits/macos.nu"
+const WINDOWS_SPECIAL_SCRIPT = "./inits/windows.nu"
+const ANDROID_SPECIAL_SCRIPT = "./inits/android.nu"
+const LINUX_SPECIAL_SCRIPT = "./inits/linux.nu"
 
-# setup System PATH
-if (uname | get operating-system) == "Darwin" {
-  path add "/opt/homebrew/bin"
-  path add "/opt/homebrew/sbin"
-
-
-  # default settings of v2rayU
-  let local_http_proxy = "http://127.0.0.1:1087"
-  let local_socks_proxy = "socks5://127.0.0.1:1080"
-
-  $env.http_proxy = $local_http_proxy
-  $env.https_proxy = $local_http_proxy
-  $env.all_proxy = $local_socks_proxy
-
-  $env.HTTP_PROXY = $local_http_proxy
-  $env.HTTPS_PROXY = $local_http_proxy
-  $env.ALL_PROXY = $local_socks_proxy
-
-} else if (uname | get kernel-name) == 'Windows_NT' {
-  # default settings of v2rayN
-  let local_http_proxy = "http://127.0.0.1:10808"
-  let local_socks_proxy = "socks5://127.0.0.1:10808"
-
-  $env.http_proxy = $local_http_proxy
-  $env.https_proxy = $local_http_proxy
-  $env.all_proxy = $local_socks_proxy
-
-  $env.HTTP_PROXY = $local_http_proxy
-  $env.HTTPS_PROXY = $local_http_proxy
-  $env.ALL_PROXY = $local_socks_proxy
-} else if ($nu.os-info.name == 'android') {
-  # Termux
+# https://www.nushell.sh/blog/2023-09-19-nushell_0_85_0.html#improvements-to-parse-time-evaluation
+const OS_SPECIAL_SCRIPT = if ($nu.os-info.name == "windows") {
+	$WINDOWS_SPECIAL_SCRIPT
+} else if ($nu.os-info.name == "macos") {
+	$MACOS_SPECIAL_SCRIPT
+} else if ($.nu.os-info.name == "android") {
+  $ANDROID_SPECIAL_SCRIPT
 } else {
-  # Linux and WSL2
-  path add ($nu.home-path | path join .local bin)
-  # /var/lib/flatpak/exports/share
-  # /home/ice/.local/share/flatpak/exports/share
+  $LINUX_SPECIAL_SCRIPT
 }
 
+# setup System PATH
+source $OS_SPECIAL_SCRIPT
+
+use std/util "path add"
 path add ($nu.home-path | path join .cargo bin)
 
 
