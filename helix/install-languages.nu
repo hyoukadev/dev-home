@@ -20,10 +20,8 @@ match $nu.os-info.name {
 }
 
 # ✅ typescript
-npm install -g typescript typescript-language-server
+npm install -g typescript typescript-language-server vscode-langservers-extracted@4.8
 npm install --save-dev --save-exact @biomejs/biome
-npm i -g vscode-langservers-extracted@4.8
-
 
 # ✅ markdown
 match $nu.os-info.name {
