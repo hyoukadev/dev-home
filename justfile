@@ -9,6 +9,28 @@ default:
 c:
   npx gitmoji-cli -c
 
+
+termux-init:
+  pkg install git
+  pkg install git-lfs
+  pkg install just
+  pkg install nushell
+  pkg install rust
+  pkg install oh-my-posh
+  pkg install yazi
+  pkg install zoxide
+  pkg install helix
+  pkg install uv
+  pkg install tmux
+  pkg install nodejs-lts
+
+termux-support-sshd:
+  pkg install openssh
+  sshd
+  ifconfig
+  passwd
+  # ssh -p 8022 ${IP}
+
 [unix]
 symlink:
   cargo run -- --source-dir .

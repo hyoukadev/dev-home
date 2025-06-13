@@ -9,3 +9,9 @@ $env.all_proxy = $local_socks_proxy
 $env.HTTP_PROXY = $local_http_proxy
 $env.HTTPS_PROXY = $local_http_proxy
 $env.ALL_PROXY = $local_socks_proxy
+
+
+const init_path = $nu.default-config-dir | path join inits
+const mise_init_path = $init_path | path join mise.nu
+source $mise_init_path
+

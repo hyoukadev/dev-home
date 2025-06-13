@@ -27,7 +27,7 @@ const OS_SPECIAL_SCRIPT = if ($nu.os-info.name == "windows") {
 	$WINDOWS_SPECIAL_SCRIPT
 } else if ($nu.os-info.name == "macos") {
 	$MACOS_SPECIAL_SCRIPT
-} else if ($.nu.os-info.name == "android") {
+} else if ($nu.os-info.name == "android") {
   $ANDROID_SPECIAL_SCRIPT
 } else {
   $LINUX_SPECIAL_SCRIPT

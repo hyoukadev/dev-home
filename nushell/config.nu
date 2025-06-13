@@ -17,31 +17,11 @@
 # You can remove these comments if you want or leave
 # them for future reference.
 
-const init_path = $nu.default-config-dir | path join inits
-const ohmyposh_init_path = $init_path | path join ohmyposh.nu
+const ohmyposh_init_path = $nu.default-config-dir | path join inits ohmyposh.nu
 source $ohmyposh_init_path
 
-const zoxide_init_path = $init_path | path join zoxide.nu
+const zoxide_init_path = $nu.default-config-dir | path join inits zoxide.nu
 source $zoxide_init_path
-
-const mise_init_path = $init_path | path join mise.nu
-source $mise_init_path
-
-# const local_mise_nu_path = ($nu.default-config-dir | path join mise.nu)
-# const local_mise_nu_file_exist = (echo $local_mise_nu_path | path exists)
-
-# let local_mise_command_exist = (which mise | length) > 0
-
-# print $"[ice]: outside"
-
-# if $local_mise_command_exist and $local_mise_nu_file_exist == false {
-#   mise activate | save $local_mise_nu_path
-#   print $"[ice]: ($local_mise_nu_path) does not exists! so we created it"
-# }
-
-# if $local_mise_command_exist {
-# 	source $local_mise_nu_path
-# }
 
 def --env y [...args] {
 	let tmp = (mktemp -t "yazi-cwd.XXXXXX")
