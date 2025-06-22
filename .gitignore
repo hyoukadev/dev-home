@@ -20,6 +20,7 @@ Cargo.lock
 
 ### Rime ###
 # rime-moran 做为子模块可能需要 git clone 500MB+ 体积，还是不自己用 git 维护了
-Rime/
+# 推荐用 plum 东风破维护 rime 配置，这样可以同时使用多份配置，如 moran + kagiroi
+plum/
 
 # End of https://www.toptal.com/developers/gitignore/api/rust
