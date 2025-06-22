@@ -1,0 +1,28 @@
+# rime-install rimeinn/rime-moran@simp
+patch:    
+  # 默认开启 Emoji 联想
+  # https://github.com/rime/home/wiki/Configuration#%E7%94%A8%E8%A3%9C%E9%9D%AA%E6%8C%87%E4%BB%A4%E4%BF%AE%E6%94%B9%E5%88%97%E8%A1%A8
+  # https://zrmfans.cn/book/usage/features.html#emoji
+  # emoji 在开关中是第7个，所以是`@6`
+  # https://github.com/rimeinn/rime-moran/blob/fe659f901a540bd24e8150298ac717cfd1d90279/moran.schema.yaml#L39
+  switches/@6/reset: 1
+  
+  # 轻量级日语混合输入
+  # https://zrmfans.cn/book/usage/features.html#%E6%97%A5%E8%AA%9E%E8%BC%B8%E5%85%A5-%E8%BC%95%E9%87%8F%E7%B4%9A
+  # schema/dependencies/+: [moran_japanese]
+  # engine/translators/+: [table_translator@japanese, table_translator@japanese_o]
+  schema/dependencies/+: [moran_japanese, kagiroi]
+  engine/translators/+: [table_translator@japanese, table_translator@japanese_o, lua_translator@*kagiroi/kagiroi_translator]
+
+  # https://zrmfans.cn/book/usage/features.html#%E5%85%A8%E5%8A%9F%E8%83%BD%E7%89%88%E6%97%A5%E8%AA%9E%E8%BC%B8%E5%85%A5
+  # rime-install rimeinn/rime-kagiroi
+  # 參考 rime-kagiroi 的 README
+  # schema/depenencies/+: [kagiroi]  # 增加依賴，可自動連帶部署 kagiroi 方案而無需增加到 schema_list 中
+  engine/segmentors/@before 5: affix_segmentor@kagiroi  # 用於識別 ok 前綴
+  # engine/translators/+: [lua_translator@*kagiroi/kagiroi_translator]  # 增加 kagiroi 翻譯器
+  kagiroi:  # 設置 ok 前綴
+    prefix: ok
+    tips: 〔カギロイ〕
+    tag: kagiroi
+  recognizer/patterns/kagiroi: '(^ok[a-z\-]*$)'  # 用於識別 ok 前綴
+

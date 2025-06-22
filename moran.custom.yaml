@@ -1,6 +1,0 @@
-patch:
-  schema/dependencies/+: [moran_japanese]
-  engine/translators/+: [table_translator@japanese, table_translator@japanese_o]
-  switches:
-    - name: emoji
-      reset: 1
