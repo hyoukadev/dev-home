@@ -54,6 +54,7 @@ if ($env.TERM_PROGRAM? == "WezTerm") {
 
 source ./helpers/git.nu
 source ./helpers/python_uv.nu
+source ./helpers/normal.nu
 source ./themes/catppuccin_frappe.nu
 
 
