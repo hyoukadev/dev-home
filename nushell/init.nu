@@ -1,3 +1,5 @@
+# nu -c init.nu 初始化
+
 const init_path = $nu.default-config-dir | path join inits
 const ohmyposh_init_path = $init_path | path join ohmyposh.nu
 # .oh-my-posh.nu created via:

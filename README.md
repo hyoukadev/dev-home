@@ -108,11 +108,3 @@ interface PathConfig {
   action: "soft" | "hard" | "copy"
 }
 ```
-
-### rime
-
-```nu
-# macOS
-git clone https://github.com/ksqsf/rime-moran ~/Library/Rime --depth=1
-```
-
