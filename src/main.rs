@@ -46,6 +46,9 @@ struct Args {
     source_dir: PathBuf,
 
     #[clap(short, long)]
+    config: PathBuf,
+
+    #[clap(short, long)]
     debug: bool,
 }
 
@@ -55,11 +58,21 @@ fn main() -> Result<()> {
     let target_dir_provider = XdgConfigDirProvider;
     let apps = vec!["helix", "nushell", "Rime"];
 
+
+    let config_path = absolute(args.config.as_path()).unwrap();
+    let config_content = fs::read_to_string(config_path.as_path())
+    .expect("");
+
     if args.debug {
         println!(
             "source_dir: {}\ntarget_dir: {}",
             source_dir.display(),
             target_dir_provider.config_dir()?.display()
+        );
+        println!(
+          "config_path: {}\n{}",
+          config_path.display(),
+          config_content
         );
         return Ok(());
     }
@@ -131,21 +144,22 @@ fn symlink(source: &Path, target: &Path) -> std::io::Result<()> {
 }
 
 #[cfg(test)]
-pub struct TestConfigDirProvider(pub PathBuf); // 添加 pub 修饰符
-
-#[cfg(test)]
-impl ConfigDirProvider for TestConfigDirProvider {
-    fn config_dir(&self) -> Result<PathBuf> {
-        Ok(self.0.clone())
-    }
-}
-
-#[cfg(test)]
 mod tests {
     use super::*;
     use std::fs;
     use std::path::PathBuf;
     use uuid::Uuid;
+
+
+    #[cfg(test)]
+    struct TestConfigDirProvider(PathBuf); // 添加 pub 修饰符
+
+    #[cfg(test)]
+    impl ConfigDirProvider for TestConfigDirProvider {
+        fn config_dir(&self) -> Result<PathBuf> {
+            Ok(self.0.clone())
+        }
+    }
 
     // 新增：项目相对路径测试目录
     fn create_temp_test_dir_in_project(test_name: &str) -> PathBuf {
