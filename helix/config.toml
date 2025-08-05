@@ -37,4 +37,20 @@ hidden = false
 # [editor.auto-save]
 # after-delay.enable = true
 
+
+# https://docs.helix-editor.com/command-line.html
+# https://docs.helix-editor.com/commands.html
+# https://github.com/sxyazi/yazi/pull/2461
+# 
+# known issues:
+#   1. fzf https://github.com/sxyazi/yazi/issues/2954
+[keys.normal]
+C-y = [
+  ':sh rm -f /tmp/unique-file',
+  ':insert-output yazi %{buffer_name} --chooser-file=/tmp/unique-file',
+  ':insert-output echo "\x1b[?1049h\x1b[?2004h" > /dev/tty',
+  ':open %sh{cat /tmp/unique-file}',
+  ':redraw',
+]
+
 # end of file
