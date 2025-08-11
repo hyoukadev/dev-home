@@ -1,6 +1,6 @@
 use ../nushell/modules/pathvar.nu *
 use ../nushell/modules/do.nu *
-use ../nushell/modules/symlink.nu *
+use ../nushell/modules/files.nu *
 
 let link = do auto {
   "macos": { pathvar home | path join Library Rime moran.custom.yaml }
