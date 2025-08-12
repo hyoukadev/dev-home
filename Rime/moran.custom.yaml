@@ -18,11 +18,11 @@ patch:
   # rime-install rimeinn/rime-kagiroi
   # 參考 rime-kagiroi 的 README
   # schema/depenencies/+: [kagiroi]  # 增加依賴，可自動連帶部署 kagiroi 方案而無需增加到 schema_list 中
-  engine/segmentors/@before 5: affix_segmentor@kagiroi  # 用於識別 ok 前綴
+  engine/segmentors/@before 5: affix_segmentor@kagiroi  # 用於識別 jp 前綴
   # engine/translators/+: [lua_translator@*kagiroi/kagiroi_translator]  # 增加 kagiroi 翻譯器
-  kagiroi:  # 設置 ok 前綴
-    prefix: ok
+  kagiroi:  # 設置 jp 前綴
+    prefix: jp
     tips: 〔カギロイ〕
     tag: kagiroi
-  recognizer/patterns/kagiroi: '(^ok[a-z\-]*$)'  # 用於識別 ok 前綴
+  recognizer/patterns/kagiroi: '(^jp[a-z\-]*$)'  # 用於識別 jp 前綴
 
