@@ -13,16 +13,21 @@ patch:
   # engine/translators/+: [table_translator@japanese, table_translator@japanese_o]
   schema/dependencies/+: [moran_japanese, kagiroi]
   engine/translators/+: [table_translator@japanese, table_translator@japanese_o, lua_translator@*kagiroi/kagiroi_translator]
-
+  
   # https://zrmfans.cn/book/usage/features.html#%E5%85%A8%E5%8A%9F%E8%83%BD%E7%89%88%E6%97%A5%E8%AA%9E%E8%BC%B8%E5%85%A5
   # rime-install rimeinn/rime-kagiroi
   # 參考 rime-kagiroi 的 README
+  # https://github.com/rimeinn/rime-kagiroi/wiki/Advanced#1将本方案用作其他方案的副翻译器
   # schema/depenencies/+: [kagiroi]  # 增加依賴，可自動連帶部署 kagiroi 方案而無需增加到 schema_list 中
   engine/segmentors/@before 5: affix_segmentor@kagiroi  # 用於識別 ok 前綴
+  # engine/processors/@before 6: lua_processor@*kagiroi/kagiroi_kana_speller
   # engine/translators/+: [lua_translator@*kagiroi/kagiroi_translator]  # 增加 kagiroi 翻譯器
   kagiroi:  # 設置 ok 前綴
     prefix: ok
     tips: 〔カギロイ〕
     tag: kagiroi
+    # layout: romaji
+    # speller:
+      # __include: kagiroi:/alphabet/3_den
   recognizer/patterns/kagiroi: '(^ok[a-z\-]*$)'  # 用於識別 ok 前綴
 
