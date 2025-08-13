@@ -1,0 +1,36 @@
+# 配置内容参考
+# 每个版本都会有很全的参考配置：https://github.com/alacritty/alacritty/releases
+# 之前使用 YAML https://github.com/alacritty/alacritty/releases/download/v0.12.3/alacritty.yml
+# 现在使用 TOML
+
+# 配置文件位置
+# https://alacritty.org/config-alacritty.html#location
+
+[env]
+TERM = "xterm-256color"
+
+[general]
+import = [
+  "catppuccin-frappe.toml",
+]
+
+[window]
+dimensions = { columns = 120, lines = 30 }
+decorations = "None"
+blur = true
+opacity = 0.9
+# padding = { x= 3, y= 3 }
+
+
+[font]
+size = 12
+
+[font.normal]
+# 可以通过 oh-my-posh 方便地安装 Nerd Font
+# https://www.nerdfonts.com/font-downloads
+# oh-my-posh font install 
+# family = "CaskaydiaCove Nerd Font Mono"
+# family = "CaskaydiaCove Nerd Font"
+family = "JetBrainsMono Nerd Font"
+style = "Regular"
+

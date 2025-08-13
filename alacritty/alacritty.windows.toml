@@ -1,0 +1,8 @@
+[general]
+import = [
+  "alacritty.base.toml",
+]
+
+[terminal.shell]
+args = ["-l"]
+program = "nu"

@@ -1,5 +1,5 @@
 export def "do auto" [cmds] {
-  let cmd = $cmds | get -i unix
+  let cmd = $cmds | get -i ($nu.os-info.family)
 
   if ($cmd | describe) == closure {
     return (do $cmd)
