@@ -3,12 +3,12 @@ use ../nushell/modules/do.nu *
 use ../nushell/modules/files.nu *
 
 let link = do auto {
-  "macos": { pathvar home | path join Library rime moran.custom.yaml }
-  _: { pathvar xdg_config_home | path join rime moran.custom.yaml }
+  "macos": { pathvar home | path join Library Rime moran.custom.yaml }
+  _: { pathvar xdg_config_home | path join Rime moran.custom.yaml }
 }
 
 let original = do auto {
-  _: { pathvar workspace | path join Rime moran.custom.yaml }
+  _: { pathvar workspace | path join rime moran.custom.yaml }
 }
 
 
