@@ -37,7 +37,8 @@ const OS_SPECIAL_SCRIPT = if ($nu.os-info.name == "windows") {
 source $OS_SPECIAL_SCRIPT
 
 use std/util "path add"
-path add ($nu.home-path | path join .cargo bin)
+# path add ($nu.home-path | path join .cargo bin)
+source $"($nu.home-path)/.cargo/env.nu"
 
 
 $env.EDITOR = "hx"
