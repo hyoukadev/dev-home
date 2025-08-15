@@ -56,8 +56,8 @@ fn main() -> Result<()> {
     let args = Args::parse();
     let source_dir = absolute(args.source_dir.as_path()).unwrap();
     let target_dir_provider = XdgConfigDirProvider;
-    let apps = vec!["helix", "nushell", "Rime"];
-
+    // let apps = vec!["helix", "nushell", "Rime"];
+    let apps = vec!["helix", "nushell"];
 
     let config_path = absolute(args.config.as_path()).unwrap();
     let config_content = fs::read_to_string(config_path.as_path())
