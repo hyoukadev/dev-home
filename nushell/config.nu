@@ -70,6 +70,9 @@ source $OS_SPECIAL_SCRIPT
 
 
 mkdir ($nu.data-dir | path join "vendor/autoload")
+
+use ./modules/pathvar.nu 'pathvar workspace'
+$env.STARSHIP_CONFIG = (pathvar workspace | path join starship starship.toml)
 starship init nu | save -f ($nu.data-dir | path join "vendor/autoload/starship.nu")
 zoxide init nushell | save -f ($nu.data-dir | path join "vendor/autoload/zoxide.nu")
 # https://mise.jdx.dev/installing-mise.html#nushell
