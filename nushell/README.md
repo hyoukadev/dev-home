@@ -3,14 +3,14 @@
 ## Windows
 ```sh
 winget install nushell
-winget install JanDeDobbeleer.OhMyPosh -s winget
+winget install --id Starship.Starship
 ```
 
 ## MacOS
 
 ```sh
 cargo install nu --locked
-brew install jandedobbeleer/oh-my-posh/oh-my-posh
+curl -sS https://starship.rs/install.sh | sh
 ```
 
 
@@ -18,6 +18,5 @@ brew install jandedobbeleer/oh-my-posh/oh-my-posh
 
 ```sh
 cargo install nu --locked
-curl -s https://ohmyposh.dev/install.sh | bash -s
-oh-my-posh init nu
+curl -sS https://starship.rs/install.sh | sh
 ```

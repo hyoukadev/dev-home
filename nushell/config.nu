@@ -17,12 +17,6 @@
 # You can remove these comments if you want or leave
 # them for future reference.
 
-const ohmyposh_init_path = $nu.default-config-dir | path join inits ohmyposh.nu
-source $ohmyposh_init_path
-
-const zoxide_init_path = $nu.default-config-dir | path join inits zoxide.nu
-source $zoxide_init_path
-
 def --env y [...args] {
 	let tmp = (mktemp -t "yazi-cwd.XXXXXX")
 	yazi ...$args --cwd-file $tmp
@@ -74,5 +68,11 @@ const OS_SPECIAL_SCRIPT = if ($nu.os-info.name == "windows") {
 
 source $OS_SPECIAL_SCRIPT
 
+
+mkdir ($nu.data-dir | path join "vendor/autoload")
+starship init nu | save -f ($nu.data-dir | path join "vendor/autoload/starship.nu")
+zoxide init nushell | save -f ($nu.data-dir | path join "vendor/autoload/zoxide.nu")
+# https://mise.jdx.dev/installing-mise.html#nushell
+mise activate nu | save -f ($nu.data-dir | path join "vendor/autoload/mise.nu")
 
 # end of file

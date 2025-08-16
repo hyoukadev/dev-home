@@ -1,11 +1,11 @@
 export def "do auto" [cmds] {
-  let cmd = $cmds | get -i ($nu.os-info.family)
+  let cmd = $cmds | get -o ($nu.os-info.family)
 
   if ($cmd | describe) == closure {
     return (do $cmd)
   }
 
-  let cmd = $cmds | get -i ($nu.os-info.name)
+  let cmd = $cmds | get -o ($nu.os-info.name)
 
   if ($cmd | describe) == closure {
     return (do $cmd)

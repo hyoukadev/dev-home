@@ -1,19 +1,12 @@
 export def "pathvar xdg_config_home" [] {
-  match $nu.os-info.name {
+  match $nu.os-info.family {
     "windows" => {
       $env.APPDATA
     }
-    "macos" => {
-      $nu.home-path
-    }
-    "linux" => {
-      $nu.home-path
+    "unix" => {
+      $nu.home-path | path join .config
     }
   }
-}
-
-export def "pathvar home" [] {
-  $nu.home-path
 }
 
 export def "pathvar workspace" [] {
