@@ -5,4 +5,4 @@ import = [
 
 [terminal.shell]
 args = ["-l", "-c", "tmux attach || tmux"]
-program = "/usr/bin/nu"
+program = "nu"

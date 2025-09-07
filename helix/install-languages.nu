@@ -9,7 +9,7 @@ cargo install taplo-cli --locked --features lsp
 
 
 # ✅ typst
-cargo install --git https://github.com/Myriad-Dreamin/tinymist --locked tinymist
+cargo install --git https://github.com/Myriad-Dreamin/tinymist --locked tinymist-cli
 
 
 # ✅ lua
