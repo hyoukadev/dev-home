@@ -132,6 +132,7 @@ alias gstl = git stash list
 alias gstp = git stash pop
 alias gsts = git stash show --text
 alias gsu = git submodule update
+alias gsuf = git submodule update --init --recursive -f
 def gsm [
 	--recursive(-r)
 	...cmd: string
