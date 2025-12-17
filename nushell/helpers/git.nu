@@ -132,6 +132,24 @@ alias gstl = git stash list
 alias gstp = git stash pop
 alias gsts = git stash show --text
 alias gsu = git submodule update
+def gsm [
+	--recursive(-r)
+	...cmd: string
+] {
+	let command = if (($cmd | length) == 0) {
+		"git pull"
+	} else {
+		$cmd | str join " "
+	}
+
+	let foreach_arg = $"($command) || true"
+
+	if $recursive {
+		git submodule foreach --recursive $foreach_arg
+	} else {
+		git submodule foreach $foreach_arg
+	}
+}
 alias gts = git tag -s
 def gtv [] {
 	git tag | sort
