@@ -64,7 +64,7 @@ install-helix:
   # sudo flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
   # sudo flatpak install flathub com.helix_editor.Helix
 
-  
+
 
 [unix]
 pre-install:
@@ -86,7 +86,7 @@ pre-install:
 pre-install:
   winget install git.git
   winget install github.gitlfs
-  winget install nushell
+  winget install nushell --scope machine
   winget install yazi
   winget install ajeetdsouza.zoxide
   winget install --id=astral-sh.uv  -e
