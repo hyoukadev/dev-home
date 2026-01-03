@@ -1,29 +1,34 @@
+use ../nushell/modules/pathvar.nu *
+use ../nushell/modules/do.nu *
+use ../nushell/modules/files.nu *
 
-# 1. install themes
-# https://github.com/yazi-rs/flavors
-ya pack -a yazi-rs/flavors:catppuccin-latte
-ya pack -a yazi-rs/flavors:catppuccin-frappe
-ya pack -a yazi-rs/flavors:catppuccin-macchiato
-
-
-# 2. link config folder
-let install_path = match $nu.os-info.family {
-  "unix" => {
-    $nu.home-path | path join .config yazi
-  }
-  "windows" => {
-    $nu.data-dir | path dirname | path join yazi config
-  }
-  _ => {
-    
-  }
+let target = do auto {
+  windows: { pathvar xdg_config_home | path join yazi config theme.toml }
+  _: { pathvar xdg_config_home | path join yazi theme.toml }
 }
 
-let theme_path_origin = $env.FILE_PWD | path join theme.toml
-let theme_path_symlink = $install_path | path join theme.toml
+let source = do auto {
+  _: { pathvar workspace | path join yazi theme.toml }
+}
 
-print $install_path
-print $theme_path_origin
-print $theme_path_symlink
+export def install [] {
+  # 1. Install themes if 'ya' command exists
+  if (which ya | is-empty) {
+    print "⚠️ 'ya' command not found, skipping theme installation."
+  } else {
+    print "🎨 Installing Yazi themes..."
+    # Using 'do -i' to ignore errors if packages are already installed
+    do -i { ya pack -a yazi-rs/flavors:catppuccin-latte }
+    do -i { ya pack -a yazi-rs/flavors:catppuccin-frappe }
+    do -i { ya pack -a yazi-rs/flavors:catppuccin-macchiato }
+  }
 
-ln -s $theme_path_origin $theme_path_symlink
+  # 2. Link config file
+  symlink $target $source
+}
+
+export def uninstall [] {
+  if ($target | path exists) {
+    rm $target
+  }
+}
