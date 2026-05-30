@@ -1,6 +1,6 @@
 services:
   dev-home:
-    image: dev-home
+    image: ${DEV_HOME_IMAGE:-dev-home}
     build:
       context: .
     container_name: dev-home

@@ -1,0 +1,91 @@
+name: Publish GHCR image
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Podman
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y podman
+          podman --version
+
+      - name: Login to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | podman login ghcr.io --username "${{ github.actor }}" --password-stdin
+
+      - name: Prepare image tags
+        shell: bash
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          set -euo pipefail
+
+          image="ghcr.io/${GITHUB_REPOSITORY,,}"
+          short_sha="${GITHUB_SHA::12}"
+
+          {
+            echo "IMAGE=$image"
+            echo "TAGS<<EOF"
+            echo "$image:sha-$short_sha"
+
+            if [ "${GITHUB_REF_TYPE}" = "branch" ] && [ "${GITHUB_REF_NAME}" = "$DEFAULT_BRANCH" ]; then
+              echo "$image:latest"
+            fi
+
+            if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+              version="${GITHUB_REF_NAME#v}"
+              echo "$image:${GITHUB_REF_NAME}"
+              echo "$image:$version"
+            fi
+
+            echo "EOF"
+          } >> "$GITHUB_ENV"
+
+      - name: Build image
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          primary_tag="$(printf '%s\n' "$TAGS" | head -n 1)"
+          created="$(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+
+          podman build \
+            --file Containerfile \
+            --tag "$primary_tag" \
+            --label "org.opencontainers.image.created=$created" \
+            --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+            --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
+            --label "org.opencontainers.image.title=dev-home" \
+            .
+
+          printf '%s\n' "$TAGS" | tail -n +2 | while IFS= read -r tag; do
+            [ -n "$tag" ] || continue
+            podman tag "$primary_tag" "$tag"
+          done
+
+      - name: Push image
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          printf '%s\n' "$TAGS" | while IFS= read -r tag; do
+            [ -n "$tag" ] || continue
+            podman push "$tag"
+          done

@@ -34,6 +34,7 @@ cp .env.example .env
 |------|------|
 | `./dev build` | 构建镜像 |
 | `./dev rebuild` | 无缓存重建镜像 |
+| `./dev pull` | 拉取 `.env` 中 `DEV_HOME_IMAGE` 配置的远程镜像 |
 | `./dev start` | 启动容器 |
 | `./dev stop` | 停止容器 |
 | `./dev restart` | 重启容器 |
@@ -114,6 +115,35 @@ ssh -T git@github.com
 
 ```bash
 podman compose build --build-arg DEV_UID=$(id -u) --build-arg DEV_GID=$(id -g)
+./dev recreate
+```
+
+## GHCR 私有镜像
+
+仓库包含 GitHub Actions workflow，会在 push 到默认分支或 `v*` tag 时构建并推送镜像到 GHCR：
+
+- `ghcr.io/<owner>/<repo>:sha-<short-sha>`
+- 默认分支额外推送 `ghcr.io/<owner>/<repo>:latest`
+- `v*` tag 额外推送原始 tag 和去掉 `v` 的版本 tag
+
+workflow 使用仓库内置的 `GITHUB_TOKEN`，需要仓库 Actions 权限允许 `packages: write`。GHCR package 是否私有由 GitHub package/repository 权限控制：私有仓库通常会继承私有权限；如果 package 首次创建后不是私有，在 GitHub 的 package settings 中把 visibility 改为 private，并确保需要拉取的账号有 read 权限。
+
+本机拉取私有 GHCR 镜像需要先登录：
+
+```bash
+echo '<token-with-read:packages>' | podman login ghcr.io -u '<github-user>' --password-stdin
+```
+
+然后在 `.env` 里指定镜像：
+
+```bash
+DEV_HOME_IMAGE=ghcr.io/<owner>/<repo>:latest
+```
+
+拉取并重建容器：
+
+```bash
+./dev pull
 ./dev recreate
 ```
 

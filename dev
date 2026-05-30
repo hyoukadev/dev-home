@@ -12,6 +12,7 @@ Usage: ./dev <command>
 Commands:
   build             Build the image
   rebuild           Rebuild the image without cache
+  pull              Pull the configured image
   start             Start the container
   stop              Stop the container
   restart           Restart the container
@@ -36,6 +37,14 @@ build() {
 
 rebuild() {
   $COMPOSE build --no-cache
+}
+
+pull() {
+  if [ -z "${DEV_HOME_IMAGE:-}" ]; then
+    echo "DEV_HOME_IMAGE is not set. Add DEV_HOME_IMAGE=ghcr.io/<owner>/<repo>:latest to .env first." >&2
+    exit 1
+  fi
+  $COMPOSE pull
 }
 
 start() {
@@ -116,7 +125,7 @@ reset_home() {
 
 [ $# -eq 0 ] && usage
 case "$1" in
-  build|rebuild|start|stop|restart|recreate|status|logs|enter|clean|purge) "$1" ;;
+  build|rebuild|pull|start|stop|restart|recreate|status|logs|enter|clean|purge) "$1" ;;
   nu) shift; nu "$@" ;;
   sh) shift; sh_shell "$@" ;;
   install) shift; install "$@" ;;
