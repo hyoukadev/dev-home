@@ -1,0 +1,8 @@
+.git
+.env
+.env.*
+.ssh
+*.pem
+id_*
+*_rsa
+*_ed25519

@@ -118,7 +118,7 @@ podman compose build --build-arg DEV_UID=$(id -u) --build-arg DEV_GID=$(id -g)
 ./dev recreate
 ```
 
-## GHCR 私有镜像
+## GHCR 镜像
 
 仓库包含 GitHub Actions workflow，会在 push 到默认分支或 `v*` tag 时构建并推送镜像到 GHCR：
 
@@ -126,11 +126,11 @@ podman compose build --build-arg DEV_UID=$(id -u) --build-arg DEV_GID=$(id -g)
 - 默认分支额外推送 `ghcr.io/<owner>/<repo>:latest`
 - `v*` tag 额外推送原始 tag 和去掉 `v` 的版本 tag
 
-workflow 使用仓库 secret `GHCR_TOKEN` 登录 GHCR。这个 token 需要是 classic PAT，并至少包含 `write:packages` 和 `read:packages`。如果需要删除已发布的 package 版本，还需要 `delete:packages`。
+workflow 使用仓库内置的 `GITHUB_TOKEN` 登录 GHCR，需要仓库 Actions 权限允许 `packages: write`。
 
-GHCR package 是否私有由 GitHub package visibility 控制。对于 public repo，建议先确认 package settings 中 visibility 为 private，再作为日常镜像源使用；public package 在 Container registry 中允许匿名拉取。
+当前仓库没有把本地 `.env`、`.env.secret`、SSH key 或 home volume 内容提交进 git，镜像构建也只把 `entrypoint.sh` 复制进镜像；因此 public GHCR package 是可以接受的。仓库仍保留 `.containerignore`，避免本地构建时把敏感文件放进构建上下文。
 
-本机拉取私有 GHCR 镜像需要先登录：
+如果 package 保持 public，本机可以直接拉取；如果以后改成 private，需要先登录：
 
 ```bash
 echo '<token-with-read:packages>' | podman login ghcr.io -u '<github-user>' --password-stdin

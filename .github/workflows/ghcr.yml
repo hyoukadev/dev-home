@@ -11,6 +11,7 @@ on:
 
 permissions:
   contents: read
+  packages: write
 
 jobs:
   publish:
@@ -27,7 +28,7 @@ jobs:
           podman --version
 
       - name: Login to GHCR
-        run: echo "${{ secrets.GHCR_TOKEN }}" | podman login ghcr.io --username "${{ github.repository_owner }}" --password-stdin
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | podman login ghcr.io --username "${{ github.actor }}" --password-stdin
 
       - name: Prepare image tags
         shell: bash
@@ -70,6 +71,7 @@ jobs:
             --tag "$primary_tag" \
             --label "org.opencontainers.image.created=$created" \
             --label "org.opencontainers.image.revision=$GITHUB_SHA" \
+            --label "org.opencontainers.image.source=https://github.com/$GITHUB_REPOSITORY" \
             --label "org.opencontainers.image.title=dev-home" \
             .
 
