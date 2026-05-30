@@ -1,0 +1,126 @@
+#!/bin/sh
+set -e
+
+NAME=dev-home
+DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
+COMPOSE="podman compose --in-pod false -f $DIR/compose.yml"
+
+usage() {
+  cat <<'EOF'
+Usage: ./dev <command>
+
+Commands:
+  build             Build the image
+  rebuild           Rebuild the image without cache
+  start             Start the container
+  stop              Stop the container
+  restart           Restart the container
+  recreate          Recreate container from the current image
+  status            Show compose status
+  logs              Follow container logs
+  enter             Enter container (tmux)
+  nu                Enter container (nushell)
+  sh                Enter container (POSIX shell)
+  install <tools>   Install global mise tools, e.g. ./dev install node@24 uv@latest
+  clean             Stop and remove container and image, preserving dev-home-home
+  reset-home        Stop and remove the persistent home volume
+  purge             Deep cleanup Podman/Buildah cache and dangling images
+
+EOF
+  exit 0
+}
+
+build() {
+  $COMPOSE build
+}
+
+rebuild() {
+  $COMPOSE build --no-cache
+}
+
+start() {
+  echo "==> Starting container..."
+  $COMPOSE up -d
+}
+
+stop() {
+  echo "==> Stopping container..."
+  $COMPOSE stop
+}
+
+restart() {
+  stop
+  start
+}
+
+recreate() {
+  echo "==> Recreating container..."
+  $COMPOSE up -d --force-recreate
+}
+
+status() {
+  $COMPOSE ps
+}
+
+logs() {
+  $COMPOSE logs -f
+}
+
+enter() {
+  echo "==> Entering container (tmux)..."
+  $COMPOSE exec --user dev --workdir /home/dev "$NAME" tmux new -A -s main
+}
+
+nu() {
+  echo "==> Entering container (nushell)..."
+  $COMPOSE exec --user dev --workdir /home/dev "$NAME" nu --login "$@"
+}
+
+sh_shell() {
+  echo "==> Entering container (sh)..."
+  $COMPOSE exec --user dev --workdir /home/dev "$NAME" /bin/sh "$@"
+}
+
+install() {
+  [ $# -gt 0 ] || {
+    echo "Usage: ./dev install <tool[@version]>..." >&2
+    exit 1
+  }
+  $COMPOSE exec --user dev --workdir /home/dev "$NAME" /home/dev/.local/bin/mise use -g "$@"
+}
+
+clean() {
+  echo "==> Stopping and removing..."
+  $COMPOSE down --rmi local
+  echo "==> Done. Persistent home volume is preserved."
+}
+
+purge() {
+  echo "==> Deep cleanup: compose resources, Buildah containers, dangling images, and builder cache..."
+  $COMPOSE down --rmi local --remove-orphans || true
+  buildah rm -a || true
+  podman image prune -a -f || true
+  podman builder prune -f || true
+  echo "==> Remaining state:"
+  $COMPOSE images || true
+  podman image ls -a || true
+  podman container ls -a || true
+  echo "==> Done. Persistent home volume is preserved."
+}
+
+reset_home() {
+  echo "==> Removing persistent home volume..."
+  $COMPOSE down --volumes
+  echo "==> Done."
+}
+
+[ $# -eq 0 ] && usage
+case "$1" in
+  build|rebuild|start|stop|restart|recreate|status|logs|enter|clean|purge) "$1" ;;
+  nu) shift; nu "$@" ;;
+  sh) shift; sh_shell "$@" ;;
+  install) shift; install "$@" ;;
+  reset-home) reset_home ;;
+  -h|--help|help) usage ;;
+  *) echo "Unknown command: $1"; usage ;;
+esac

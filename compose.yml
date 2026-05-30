@@ -1,0 +1,24 @@
+services:
+  dev-home:
+    image: dev-home
+    build:
+      context: .
+    container_name: dev-home
+    network_mode: host
+    userns_mode: keep-id
+    working_dir: /home/dev
+    restart: unless-stopped
+    stdin_open: true
+    tty: true
+    env_file:
+      - .env
+      - .env.secret
+    environment:
+      DEV_HOME_WORKSPACE: /workspace
+    volumes:
+      - dev-home-home:/home/dev
+      - ${DEV_HOME_HOST_WORKSPACE:-..}:/workspace
+      - ~/.ssh:/host-ssh:ro
+
+volumes:
+  dev-home-home:
