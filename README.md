@@ -126,7 +126,9 @@ podman compose build --build-arg DEV_UID=$(id -u) --build-arg DEV_GID=$(id -g)
 - 默认分支额外推送 `ghcr.io/<owner>/<repo>:latest`
 - `v*` tag 额外推送原始 tag 和去掉 `v` 的版本 tag
 
-workflow 使用仓库内置的 `GITHUB_TOKEN`，需要仓库 Actions 权限允许 `packages: write`。GHCR package 是否私有由 GitHub package/repository 权限控制：私有仓库通常会继承私有权限；如果 package 首次创建后不是私有，在 GitHub 的 package settings 中把 visibility 改为 private，并确保需要拉取的账号有 read 权限。
+workflow 使用仓库 secret `GHCR_TOKEN` 登录 GHCR。这个 token 需要是 classic PAT，并至少包含 `write:packages` 和 `read:packages`。如果需要删除已发布的 package 版本，还需要 `delete:packages`。
+
+GHCR package 是否私有由 GitHub package visibility 控制。对于 public repo，建议先确认 package settings 中 visibility 为 private，再作为日常镜像源使用；public package 在 Container registry 中允许匿名拉取。
 
 本机拉取私有 GHCR 镜像需要先登录：
 

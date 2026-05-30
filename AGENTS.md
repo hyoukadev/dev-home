@@ -24,4 +24,4 @@
 - nushell 配置来自 `git@github.com:hyoukadev/ohmynushell.git`，直接 clone 到 `~/.config/nushell`，inits/linux.nu 被替换为容器版（PATH + 环境变量代理，不硬编码）
 - `mise/starship/zoxide` 必须参考 ohmynushell 仓库 `.agent/skills` 写入 `~/.local/share/nushell/vendor/autoload`，`starship.toml` 使用 Catppuccin 主题，`yazi` 通过 ohmynushell 的 `y` helper 使用
 - `dev` 用户默认 UID/GID 为 `1000:1000`，compose 使用 `userns_mode: keep-id`；宿主机 `~/.ssh` 只读挂载到 `/host-ssh`，entrypoint 生成容器内 `~/.ssh`（私钥 symlink，config/known_hosts 复制），避免 rootless UID 造成权限问题
-- GitHub Actions 发布 GHCR 镜像到 `ghcr.io/<owner>/<repo>`；本地 compose 镜像名通过 `.env` 中的 `DEV_HOME_IMAGE` 覆盖，默认仍为本地 `dev-home`
+- GitHub Actions 使用仓库 secret `GHCR_TOKEN` 发布 GHCR 镜像到 `ghcr.io/<owner>/<repo>`；本地 compose 镜像名通过 `.env` 中的 `DEV_HOME_IMAGE` 覆盖，默认仍为本地 `dev-home`
