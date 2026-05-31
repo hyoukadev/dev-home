@@ -34,14 +34,29 @@ FLYCTL_VERSION="latest"
 # ============================================
 if [ "$(id -u)" = "0" ]; then
     DEV_HOME="/home/dev"
-    DEV_UID="${DEV_UID:-1000}"
-    DEV_GID="${DEV_GID:-1000}"
+    DEV_UID="${DEV_UID:-}"
+    DEV_GID="${DEV_GID:-}"
 
     # Save proxy for Phase 2 (tool downloads need it)
     SAVED_http_proxy="$http_proxy"
     SAVED_https_proxy="$https_proxy"
     SAVED_HTTP_PROXY="$HTTP_PROXY"
     SAVED_HTTPS_PROXY="$HTTPS_PROXY"
+
+    if [ -z "$DEV_UID" ] || [ -z "$DEV_GID" ]; then
+        if [ -d /workspace ]; then
+            WORKSPACE_UID=$(stat -c '%u' /workspace 2>/dev/null || true)
+            WORKSPACE_GID=$(stat -c '%g' /workspace 2>/dev/null || true)
+            if [ -z "$DEV_UID" ] && [ -n "$WORKSPACE_UID" ] && [ "$WORKSPACE_UID" != "0" ]; then
+                DEV_UID="$WORKSPACE_UID"
+            fi
+            if [ -z "$DEV_GID" ] && [ -n "$WORKSPACE_GID" ] && [ "$WORKSPACE_GID" != "0" ]; then
+                DEV_GID="$WORKSPACE_GID"
+            fi
+        fi
+    fi
+    DEV_UID="${DEV_UID:-1000}"
+    DEV_GID="${DEV_GID:-1000}"
 
     case "$DEV_UID" in
         ''|*[!0-9]*)

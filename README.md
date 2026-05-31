@@ -122,50 +122,26 @@ podman compose build --build-arg DEV_UID=$(id -u) --build-arg DEV_GID=$(id -g)
 
 GHCR 发布的是 OCI 镜像，Docker 可以直接使用。NAS 上不需要 clone 本仓库，也不需要重新构建镜像；只要准备一个最小 Compose 配置，拉取镜像后启动即可。
 
-先准备目录和 `.env`：
+先准备目录和 `compose.yml`：
 
 ```bash
 mkdir -p "$HOME/dev-home/workspace"
 cd "$HOME/dev-home"
 
-uid=$(id -u 2>/dev/null || echo 1000)
-gid=$(id -g 2>/dev/null || echo 1000)
-[ "$uid" = 0 ] && uid=1000
-[ "$gid" = 0 ] && gid=1000
-
-cat > .env <<EOF
-DEV_HOME_IMAGE=ghcr.io/hyoukadev/dev-home:latest
-DEV_HOME_CONTAINER_NAME=dev-home
-DEV_HOME_WORKSPACE_DIR=$PWD/workspace
-DEV_HOME_SSH_DIR=$HOME/.ssh
-DEV_UID=$uid
-DEV_GID=$gid
-EOF
-```
-
-如果 NAS 的 workspace 文件归属不是当前用户，按实际归属编辑 `.env` 里的 `DEV_UID`/`DEV_GID`。不要使用 root 的 `0:0`。
-
-再写入 `compose.yml`：
-
-```bash
-cat > compose.yml <<'EOF'
+cat > compose.yml <<EOF
 services:
   dev-home:
-    image: ${DEV_HOME_IMAGE}
-    container_name: ${DEV_HOME_CONTAINER_NAME}
+    image: ghcr.io/hyoukadev/dev-home:latest
+    container_name: dev-home
     network_mode: host
     working_dir: /home/dev
     restart: unless-stopped
     stdin_open: true
     tty: true
-    environment:
-      DEV_HOME_WORKSPACE: /workspace
-      DEV_UID: ${DEV_UID}
-      DEV_GID: ${DEV_GID}
     volumes:
       - dev-home-home:/home/dev
-      - "${DEV_HOME_WORKSPACE_DIR}:/workspace"
-      - "${DEV_HOME_SSH_DIR}:/host-ssh:ro"
+      - ./workspace:/workspace
+      - "$HOME/.ssh:/host-ssh:ro"
 
 volumes:
   dev-home-home:
@@ -191,10 +167,18 @@ docker compose exec dev-home tmux new -A -s main
 需要注意：
 
 - 首次启动仍需要网络。镜像只包含基础系统和 entrypoint，apt 依赖、mise 工具、ohmynushell、oh-my-tmux 都在容器首次启动时安装。
-- 需要可用的 GitHub SSH。entrypoint 会通过 `git@github.com:hyoukadev/ohmynushell.git` clone Nushell 配置，因此 `DEV_HOME_SSH_DIR` 指向的目录里要有能访问该仓库的 key、config 和 known_hosts。可先在 NAS 上执行 `ssh -T git@github.com` 检查。
+- 需要可用的 GitHub SSH。entrypoint 会通过 `git@github.com:hyoukadev/ohmynushell.git` clone Nushell 配置，因此 `$HOME/.ssh` 里要有能访问该仓库的 key、config 和 known_hosts。可先在 NAS 上执行 `ssh -T git@github.com` 检查。
 - `/home/dev` 应该挂载持久化 volume，否则 mise 工具和 Nushell 配置会随容器删除而丢失。
-- Docker 没有 Podman 的 `userns_mode: keep-id` 语义；NAS 场景通过 `DEV_UID`/`DEV_GID` 在容器启动时调整 `dev` 用户，以减少 `/workspace` bind mount 的权限问题。
+- Docker 没有 Podman 的 `userns_mode: keep-id` 语义；entrypoint 会在未显式配置时自动读取 `/workspace` 的 UID/GID 并调整 `dev` 用户，以减少 bind mount 的权限问题。
 - `network_mode: host` 只适合 Linux/NAS 场景；Docker Desktop 上行为不同。
+
+如果 workspace 权限仍不匹配，可以在 `compose.yml` 的 `tty: true` 后面加上实际 UID/GID，再重新 `docker compose up -d`：
+
+```yaml
+    environment:
+      DEV_UID: "1000"
+      DEV_GID: "1000"
+```
 
 ## GHCR 镜像
 
