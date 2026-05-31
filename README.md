@@ -120,70 +120,61 @@ podman compose build --build-arg DEV_UID=$(id -u) --build-arg DEV_GID=$(id -g)
 
 ## NAS 直接使用镜像
 
-GHCR 发布的是 OCI 镜像，Docker 可以直接使用：
+GHCR 发布的是 OCI 镜像，Docker 可以直接使用。NAS 上推荐用 `nas-install.sh` 自动生成 Docker Compose 配置、准备 workspace、检测 GitHub SSH、拉取镜像并启动容器。
+
+如果 NAS 能访问本仓库 raw 文件：
 
 ```bash
+curl -fsSL https://raw.githubusercontent.com/hyoukadev/dev-home/master/nas-install.sh | sh -s -- --dir "$HOME/dev-home"
+```
+
+如果只有镜像可访问、没有本仓库代码，可以先从镜像里取出同一个脚本：
+
+```bash
+mkdir -p dev-home
+cd dev-home
 docker pull ghcr.io/hyoukadev/dev-home:latest
+docker run --rm --entrypoint cat \
+  ghcr.io/hyoukadev/dev-home:latest \
+  /usr/local/share/dev-home/nas-install.sh > nas-install.sh
+sh nas-install.sh --dir "$PWD"
 ```
 
-没有 clone 本仓库时，建议在 NAS 上单独放一个最小 `compose.yml`。Docker Compose 可用这个版本：
+脚本会写入：
 
-```yaml
-services:
-  dev-home:
-    image: ghcr.io/hyoukadev/dev-home:latest
-    container_name: dev-home
-    network_mode: host
-    working_dir: /home/dev
-    restart: unless-stopped
-    stdin_open: true
-    tty: true
-    environment:
-      DEV_HOME_WORKSPACE: /workspace
-    volumes:
-      - dev-home-home:/home/dev
-      - ./workspace:/workspace
-      - ~/.ssh:/host-ssh:ro
+- `compose.yml`：Docker Compose 运行配置
+- `.env`：镜像名、容器名、workspace、SSH 目录、`DEV_UID`、`DEV_GID`
+- `workspace/`：挂载到容器内 `/workspace`
+- `dev-home-home` named volume：持久化容器内 `/home/dev`
 
-volumes:
-  dev-home-home:
-```
-
-启动和进入：
+进入和查看日志：
 
 ```bash
-mkdir -p workspace
-docker compose pull
-docker compose up -d
-docker logs -f dev-home
-docker exec -it dev-home tmux new -A -s main
+cd "$HOME/dev-home"
+docker compose logs -f
+docker compose exec dev-home tmux new -A -s main
 ```
 
-不用 compose 也可以直接 `docker run`：
+常用自定义：
 
 ```bash
-mkdir -p workspace
-docker run -d --name dev-home \
-  --network host \
-  --restart unless-stopped \
-  -it \
-  -w /home/dev \
-  -e DEV_HOME_WORKSPACE=/workspace \
-  -v dev-home-home:/home/dev \
-  -v "$PWD/workspace:/workspace" \
-  -v "$HOME/.ssh:/host-ssh:ro" \
-  ghcr.io/hyoukadev/dev-home:latest
-
-docker logs -f dev-home
-docker exec -it dev-home tmux new -A -s main
+sh nas-install.sh --dir "$HOME/dev-home" --workspace /volume1/workspace --ssh-dir "$HOME/.ssh" --force
+sh nas-install.sh --dir "$HOME/dev-home" --no-start
 ```
 
-直接拉镜像使用时需要注意：
+自动化已处理：
+
+- 不需要 `sudo`；只要求当前 NAS 用户能使用 Docker。
+- 不需要 clone `dev-home` 仓库；脚本可以从镜像中提取。
+- `working_dir` 固定为 `/home/dev`，进入命令固定使用 tmux。
+- Docker 没有 Podman 的 `userns_mode: keep-id`，脚本会把当前宿主用户的 UID/GID 写入 `.env`，entrypoint 启动时会把容器内 `dev` 用户调整到对应 UID/GID。若脚本检测到当前用户是 root，会回退到 `1000:1000`。
+- 脚本会尽量把 `github.com` 写入 `known_hosts`，并用 `ssh -T git@github.com` 预检查 GitHub SSH。
+
+仍需要注意：
 
 - 首次启动仍需要网络。镜像只包含基础系统和 entrypoint，apt 依赖、mise 工具、ohmynushell、oh-my-tmux 都在容器首次启动时安装。
-- 需要可用的 GitHub SSH。entrypoint 会通过 `git@github.com:hyoukadev/ohmynushell.git` clone Nushell 配置，因此 NAS 的 `~/.ssh` 里要有能访问该仓库的 key、config 和 known_hosts。可先在 NAS 上跑 `ssh -T git@github.com` 验证。
+- 需要可用的 GitHub SSH。entrypoint 会通过 `git@github.com:hyoukadev/ohmynushell.git` clone Nushell 配置，因此 NAS 的 `~/.ssh` 里要有能访问该仓库的 key 和 config。
 - `/home/dev` 应该挂载持久化 volume，否则 mise 工具和 Nushell 配置会随容器删除而丢失。
-- Docker Compose 不支持 Podman 的 `userns_mode: keep-id` 语义；上面的 Docker 示例没有使用它。容器内 `dev` 默认是 `1000:1000`，如果 NAS 文件权限不是这个 UID/GID，`/workspace` bind mount 可能需要手动调整权限。
 - `network_mode: host` 只适合 Linux/NAS 场景；Docker Desktop 上行为不同。
 
 ## GHCR 镜像
@@ -196,7 +187,7 @@ docker exec -it dev-home tmux new -A -s main
 
 workflow 使用仓库内置的 `GITHUB_TOKEN` 登录 GHCR，需要仓库 Actions 权限允许 `packages: write`。
 
-当前仓库没有把本地 `.env`、`.env.secret`、SSH key 或 home volume 内容提交进 git，镜像构建也只把 `entrypoint.sh` 复制进镜像；因此 public GHCR package 是可以接受的。仓库仍保留 `.containerignore`，避免本地构建时把敏感文件放进构建上下文。
+当前仓库没有把本地 `.env`、`.env.secret`、SSH key 或 home volume 内容提交进 git，镜像构建只把 `entrypoint.sh` 和 `nas-install.sh` 复制进镜像；因此 public GHCR package 是可以接受的。仓库仍保留 `.containerignore`，避免本地构建时把敏感文件放进构建上下文。
 
 如果 package 保持 public，本机可以直接拉取；如果以后改成 private，需要先登录：
 

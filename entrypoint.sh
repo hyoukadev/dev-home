@@ -34,12 +34,56 @@ FLYCTL_VERSION="latest"
 # ============================================
 if [ "$(id -u)" = "0" ]; then
     DEV_HOME="/home/dev"
+    DEV_UID="${DEV_UID:-1000}"
+    DEV_GID="${DEV_GID:-1000}"
 
     # Save proxy for Phase 2 (tool downloads need it)
     SAVED_http_proxy="$http_proxy"
     SAVED_https_proxy="$https_proxy"
     SAVED_HTTP_PROXY="$HTTP_PROXY"
     SAVED_HTTPS_PROXY="$HTTPS_PROXY"
+
+    case "$DEV_UID" in
+        ''|*[!0-9]*)
+            echo "DEV_UID must be a numeric uid, got: $DEV_UID" >&2
+            exit 1
+            ;;
+    esac
+    case "$DEV_GID" in
+        ''|*[!0-9]*)
+            echo "DEV_GID must be a numeric gid, got: $DEV_GID" >&2
+            exit 1
+            ;;
+    esac
+    if [ "$DEV_UID" = "0" ] || [ "$DEV_GID" = "0" ]; then
+        echo "DEV_UID/DEV_GID must not be 0 because root already uses 0:0." >&2
+        exit 1
+    fi
+
+    CURRENT_GID=$(id -g dev)
+    DEV_GROUP=$(id -gn dev)
+    if [ "$DEV_GID" != "$CURRENT_GID" ]; then
+        EXISTING_GROUP=$(getent group "$DEV_GID" | cut -d: -f1 || true)
+        if [ -n "$EXISTING_GROUP" ] && [ "$EXISTING_GROUP" != "dev" ]; then
+            DEV_GROUP="$EXISTING_GROUP"
+        else
+            groupmod -g "$DEV_GID" dev
+            DEV_GROUP=dev
+        fi
+    fi
+
+    CURRENT_UID=$(id -u dev)
+    if [ "$DEV_UID" != "$CURRENT_UID" ]; then
+        EXISTING_USER=$(getent passwd "$DEV_UID" | cut -d: -f1 || true)
+        if [ -n "$EXISTING_USER" ] && [ "$EXISTING_USER" != "dev" ]; then
+            echo "Cannot set dev uid to $DEV_UID because user '$EXISTING_USER' already uses it." >&2
+            exit 1
+        fi
+        usermod -u "$DEV_UID" -g "$DEV_GROUP" dev
+    elif [ "$DEV_GID" != "$CURRENT_GID" ]; then
+        usermod -g "$DEV_GROUP" dev
+    fi
+    DEV_PRIMARY_GID=$(id -g dev)
 
     ROOT_MARKER="/var/lib/dev-home/root-bootstrap.done"
     if [ ! -f "$ROOT_MARKER" ]; then
@@ -63,17 +107,21 @@ if [ "$(id -u)" = "0" ]; then
         touch "$ROOT_MARKER"
     fi
 
+    # Create root-phase directories before the ownership repair below.
+    VENDOR_DIR="/home/dev/.local/share/nushell/vendor/autoload"
+    mkdir -p "$DEV_HOME/.local/bin" "$VENDOR_DIR"
+
     # Repair ownership for persisted home volumes created by older images.
     # Keep ~/.ssh untouched because it is a read-only host bind mount.
-    chown dev:dev "$DEV_HOME"
-    find "$DEV_HOME" -mindepth 1 -maxdepth 1 ! -name .ssh -exec chown -R dev:dev {} +
+    chown dev:"$DEV_GROUP" "$DEV_HOME"
+    find "$DEV_HOME" -mindepth 1 -maxdepth 1 ! -name .ssh -exec chown -R dev:"$DEV_GROUP" {} +
 
     # Materialize a writable ~/.ssh while keeping private keys on the read-only host mount.
     if [ -d /host-ssh ]; then
         SSH_DIR="$DEV_HOME/.ssh"
         rm -rf "$SSH_DIR"
         mkdir -p "$SSH_DIR"
-        chown dev:dev "$SSH_DIR"
+        chown dev:"$DEV_GROUP" "$SSH_DIR"
         chmod 700 "$SSH_DIR"
 
         for src in /host-ssh/* /host-ssh/.[!.]*; do
@@ -83,24 +131,19 @@ if [ "$(id -u)" = "0" ]; then
             case "$name" in
                 config|known_hosts|known_hosts.old|*.pub|.gitignore)
                     cp "$src" "$SSH_DIR/$name" 2>/dev/null || true
-                    chown dev:dev "$SSH_DIR/$name" 2>/dev/null || true
+                    chown dev:"$DEV_GROUP" "$SSH_DIR/$name" 2>/dev/null || true
                     chmod 600 "$SSH_DIR/$name" 2>/dev/null || true
                     ;;
                 *)
                     ln -s "$src" "$SSH_DIR/$name"
-                    chown -h dev:dev "$SSH_DIR/$name" 2>/dev/null || true
+                    chown -h dev:"$DEV_GROUP" "$SSH_DIR/$name" 2>/dev/null || true
                     ;;
             esac
         done
     fi
 
-    # Create vendor autoload dir (pre-created + chown'd so dev can write into it)
-    VENDOR_DIR="/home/dev/.local/share/nushell/vendor/autoload"
-    mkdir -p "$VENDOR_DIR"
-    chown dev:dev "$VENDOR_DIR"
-
     # Re-exec as dev without creating a su-managed session.
-    exec setpriv --reuid dev --regid dev --init-groups env \
+    exec setpriv --reuid dev --regid "$DEV_PRIMARY_GID" --init-groups env \
         HOME="$DEV_HOME" USER=dev LOGNAME=dev SHELL=/usr/bin/nu \
         http_proxy="$SAVED_http_proxy" https_proxy="$SAVED_https_proxy" \
         HTTP_PROXY="$SAVED_HTTP_PROXY" HTTPS_PROXY="$SAVED_HTTPS_PROXY" \

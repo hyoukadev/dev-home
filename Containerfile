@@ -32,6 +32,7 @@ RUN if getent group dev >/dev/null; then \
     echo "dev ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
 COPY entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN chmod +x /usr/local/bin/entrypoint.sh
+COPY nas-install.sh /usr/local/share/dev-home/nas-install.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh /usr/local/share/dev-home/nas-install.sh
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 CMD ["sleep", "infinity"]
