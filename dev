@@ -5,8 +5,6 @@ NAME=dev-home
 DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 COMPOSE="podman compose --in-pod false -f $DIR/compose.yml"
 GPU_DRI_FALLBACK="/dev/null:/dev/null"
-GPU_KFD_FALLBACK="/dev/zero:/dev/zero"
-GPU_CDI_FALLBACK="/dev/full:/dev/full"
 
 usage() {
   cat <<'EOF'
@@ -25,7 +23,7 @@ Commands:
   enter             Enter container (tmux)
   nu                Enter container (nushell)
   sh                Enter container (POSIX shell)
-  gpu               Show GPU/iGPU passthrough status
+  gpu               Show Intel iGPU passthrough status
   install <tools>   Install global mise tools, e.g. ./dev install node@24 uv@latest
   clean             Stop and remove container and image, preserving dev-home-home
   reset-home        Stop and remove the persistent home volume
@@ -74,15 +72,6 @@ config_value() {
   return 1
 }
 
-cdi_device_available() {
-  vendor=$1
-  for dir in /etc/cdi /var/run/cdi; do
-    [ -d "$dir" ] || continue
-    grep -Rqs "$vendor" "$dir" && return 0
-  done
-  return 1
-}
-
 mark_gpu_enabled() {
   DEV_HOME_KEEP_GROUPS=1
   export DEV_HOME_KEEP_GROUPS
@@ -98,16 +87,14 @@ configure_gpu() {
   mode=$(config_value DEV_HOME_GPU || true)
   mode=${mode:-auto}
   case "$mode" in
-    auto|none|dri|nvidia|amd) ;;
+    auto|none|intel|dri) ;;
     *)
-      echo "DEV_HOME_GPU must be one of auto, none, dri, nvidia, amd; got: $mode" >&2
+      echo "DEV_HOME_GPU must be one of auto, none, intel, dri; got: $mode" >&2
       exit 1
       ;;
   esac
 
   manual_dri=$(config_value DEV_HOME_DRI_DEVICE || true)
-  manual_kfd=$(config_value DEV_HOME_KFD_DEVICE || true)
-  manual_cdi=$(config_value DEV_HOME_GPU_CDI_DEVICE || true)
   gpu_enabled=0
   gpu_parts=
   DEV_HOME_KEEP_GROUPS=0
@@ -115,10 +102,8 @@ configure_gpu() {
 
   if [ "$mode" = "none" ]; then
     DEV_HOME_DRI_DEVICE=$GPU_DRI_FALLBACK
-    DEV_HOME_KFD_DEVICE=$GPU_KFD_FALLBACK
-    DEV_HOME_GPU_CDI_DEVICE=$GPU_CDI_FALLBACK
     DEV_HOME_GPU_EFFECTIVE=none
-    export DEV_HOME_DRI_DEVICE DEV_HOME_KFD_DEVICE DEV_HOME_GPU_CDI_DEVICE DEV_HOME_GPU_EFFECTIVE
+    export DEV_HOME_DRI_DEVICE DEV_HOME_GPU_EFFECTIVE
     return 0
   fi
 
@@ -127,65 +112,16 @@ configure_gpu() {
     export DEV_HOME_DRI_DEVICE
     [ "$manual_dri" != "$GPU_DRI_FALLBACK" ] && mark_gpu_enabled "$manual_dri"
   fi
-  if [ -n "$manual_kfd" ]; then
-    DEV_HOME_KFD_DEVICE=$manual_kfd
-    export DEV_HOME_KFD_DEVICE
-    [ "$manual_kfd" != "$GPU_KFD_FALLBACK" ] && mark_gpu_enabled "$manual_kfd"
-  fi
-  if [ -n "$manual_cdi" ]; then
-    DEV_HOME_GPU_CDI_DEVICE=$manual_cdi
-    export DEV_HOME_GPU_CDI_DEVICE
-    [ "$manual_cdi" != "$GPU_CDI_FALLBACK" ] && mark_gpu_enabled "$manual_cdi"
-  fi
 
-  if [ -z "$manual_dri" ] && { [ "$mode" = "auto" ] || [ "$mode" = "dri" ] || [ "$mode" = "amd" ] || [ "$mode" = "nvidia" ]; }; then
+  if [ -z "$manual_dri" ]; then
     if [ -d /dev/dri ]; then
       DEV_HOME_DRI_DEVICE="/dev/dri:/dev/dri"
       export DEV_HOME_DRI_DEVICE
-      mark_gpu_enabled "/dev/dri"
-    elif [ "$mode" = "dri" ]; then
-      echo "DEV_HOME_GPU=dri requested, but /dev/dri does not exist on the host." >&2
+      mark_gpu_enabled "/dev/dri (Intel iGPU)"
+    elif [ "$mode" = "dri" ] || [ "$mode" = "intel" ]; then
+      echo "DEV_HOME_GPU=$mode requested, but /dev/dri does not exist on the host." >&2
       exit 1
     fi
-  fi
-
-  if [ -z "$manual_kfd" ] && { [ "$mode" = "auto" ] || [ "$mode" = "amd" ]; } && [ -e /dev/kfd ]; then
-    DEV_HOME_KFD_DEVICE="/dev/kfd:/dev/kfd"
-    export DEV_HOME_KFD_DEVICE
-    mark_gpu_enabled "/dev/kfd"
-  fi
-
-  if [ -z "$manual_cdi" ]; then
-    case "$mode" in
-      auto)
-        if cdi_device_available "nvidia.com/gpu"; then
-          DEV_HOME_GPU_CDI_DEVICE="nvidia.com/gpu=all"
-          export DEV_HOME_GPU_CDI_DEVICE
-          mark_gpu_enabled "$DEV_HOME_GPU_CDI_DEVICE"
-        elif cdi_device_available "amd.com/gpu"; then
-          DEV_HOME_GPU_CDI_DEVICE="amd.com/gpu=all"
-          export DEV_HOME_GPU_CDI_DEVICE
-          mark_gpu_enabled "$DEV_HOME_GPU_CDI_DEVICE"
-        fi
-        ;;
-      nvidia)
-        DEV_HOME_GPU_CDI_DEVICE="nvidia.com/gpu=all"
-        export DEV_HOME_GPU_CDI_DEVICE
-        mark_gpu_enabled "$DEV_HOME_GPU_CDI_DEVICE"
-        ;;
-      amd)
-        if cdi_device_available "amd.com/gpu"; then
-          DEV_HOME_GPU_CDI_DEVICE="amd.com/gpu=all"
-          export DEV_HOME_GPU_CDI_DEVICE
-          mark_gpu_enabled "$DEV_HOME_GPU_CDI_DEVICE"
-        fi
-        ;;
-    esac
-  fi
-
-  if [ "$mode" = "amd" ] && [ "$gpu_enabled" = "0" ]; then
-    echo "DEV_HOME_GPU=amd requested, but no AMD CDI, /dev/dri, or /dev/kfd device was found." >&2
-    exit 1
   fi
 
   if [ "$gpu_enabled" = "1" ]; then
@@ -197,7 +133,7 @@ configure_gpu() {
 }
 
 show_gpu_summary() {
-  echo "==> GPU passthrough: $DEV_HOME_GPU_EFFECTIVE"
+  echo "==> Intel iGPU passthrough: $DEV_HOME_GPU_EFFECTIVE"
 }
 
 build() {
@@ -269,23 +205,18 @@ sh_shell() {
 gpu() {
   configure_gpu
   show_gpu_summary
-  echo "==> Host GPU device nodes:"
-  ls -ld /dev/dri /dev/kfd /dev/nvidia* 2>/dev/null || true
-  echo "==> Host CDI specs:"
-  find /etc/cdi /var/run/cdi -maxdepth 1 -type f -print 2>/dev/null || true
+  echo "==> Host Intel iGPU device nodes:"
+  ls -ld /dev/dri /dev/dri/* 2>/dev/null || true
   container_ids=$($COMPOSE ps -q 2>/dev/null || true)
   if [ -z "$container_ids" ]; then
-    echo "==> Container GPU view:"
+    echo "==> Container Intel iGPU view:"
     echo "Container is not running. Run ./dev start first."
     return 0
   fi
-  echo "==> Container GPU view:"
+  echo "==> Container Intel iGPU view:"
   $COMPOSE exec --user dev --workdir /home/dev "$NAME" /bin/sh -lc '
     id
-    ls -ld /dev/dri /dev/kfd /dev/nvidia* 2>/dev/null || true
-    if command -v nvidia-smi >/dev/null 2>&1; then
-      nvidia-smi -L || true
-    fi
+    ls -ld /dev/dri /dev/dri/* 2>/dev/null || true
     if command -v vainfo >/dev/null 2>&1 && [ -e /dev/dri/renderD128 ]; then
       vainfo --display drm --device /dev/dri/renderD128 2>/dev/null | sed -n "1,20p" || true
     fi

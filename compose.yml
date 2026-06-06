@@ -22,8 +22,6 @@ services:
       - label=disable
     devices:
       - ${DEV_HOME_DRI_DEVICE:-/dev/null:/dev/null}
-      - ${DEV_HOME_KFD_DEVICE:-/dev/zero:/dev/zero}
-      - ${DEV_HOME_GPU_CDI_DEVICE:-/dev/full:/dev/full}
     volumes:
       - dev-home-home:/home/dev
       - ${DEV_HOME_HOST_WORKSPACE:-..}:/workspace

@@ -115,7 +115,7 @@ if [ "$(id -u)" = "0" ]; then
             build-essential clang lld cmake pkg-config libssl-dev \
             unzip zip xz-utils zstd tar gzip sudo jq file less vim locales \
             vainfo mesa-utils vulkan-tools clinfo libva-drm2 \
-            mesa-va-drivers mesa-vulkan-drivers intel-media-va-driver \
+            mesa-va-drivers mesa-vulkan-drivers intel-media-va-driver i965-va-driver \
             && rm -rf /var/lib/apt/lists/*
 
         # --- locale-gen ---
@@ -159,11 +159,10 @@ if [ "$(id -u)" = "0" ]; then
         done
     fi
 
-    # Re-exec as dev without creating a su-managed session. GPU device
+    # Re-exec as dev without creating a su-managed session. Intel iGPU
     # access in rootless Podman needs the host's supplementary groups.
     SETPRIV_GROUP_ARGS="--init-groups"
-    if [ "${DEV_HOME_KEEP_GROUPS:-0}" = "1" ] || \
-       [ -d /dev/dri ] || [ -e /dev/kfd ] || ls /dev/nvidia* >/dev/null 2>&1; then
+    if [ "${DEV_HOME_KEEP_GROUPS:-0}" = "1" ] || [ -d /dev/dri ]; then
         SETPRIV_GROUP_ARGS="--keep-groups"
     fi
     exec setpriv --reuid dev --regid "$DEV_PRIMARY_GID" "$SETPRIV_GROUP_ARGS" env \
