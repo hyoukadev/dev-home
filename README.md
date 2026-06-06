@@ -29,6 +29,22 @@ cp .env.example .env
 
 容器内 `dev` 和 `root` 密码默认都是同名密码：`dev` / `root`。正常提权使用 `sudo`，已配置 `dev ALL=(ALL) NOPASSWD: ALL`。
 
+## Ubuntu Server 直接初始化
+
+如果不需要容器，也可以在 Ubuntu Server 上直接初始化当前用户的开发环境：
+
+```bash
+scripts/bootstrap-ubuntu-server.sh
+```
+
+脚本必须用普通 sudo 用户执行，不要用 root。它会通过 apt 安装系统依赖和 Intel 核显用户态包，通过 GitHub release 安装 Nushell，通过 mise 安装与容器一致的默认工具，并配置 ohmynushell、vendor autoloads、oh-my-tmux 和 `~/.profile` PATH。已有的非预期 `~/.config/nushell`、`~/.tmux`、`~/.tmux.conf` 会先备份，不会直接删除。
+
+需要可用的 GitHub SSH，因为 Nushell 配置仍会从 `git@github.com:hyoukadev/ohmynushell.git` 克隆。GitHub API 受限时可以传入 `GITHUB_TOKEN`；如需固定 Nushell 版本，可以设置 `NUSHELL_VERSION`：
+
+```bash
+GITHUB_TOKEN=... NUSHELL_VERSION=0.113.1 scripts/bootstrap-ubuntu-server.sh
+```
+
 ## 命令
 
 | 命令 | 作用 |
@@ -84,7 +100,7 @@ DEV_HOME_HOST_WORKSPACE=/home/hyouka/item
 
 ## 默认工具
 
-默认版本在 [entrypoint.sh](/home/hyouka/item/dev-home/entrypoint.sh) 顶部维护。修改后提升 `BOOTSTRAP_VERSION`，再执行：
+默认版本在 [entrypoint.sh](/home/hyouka/item/dev-home/entrypoint.sh) 和 [scripts/bootstrap-ubuntu-server.sh](/home/hyouka/item/dev-home/scripts/bootstrap-ubuntu-server.sh) 顶部同步维护。修改后提升 `BOOTSTRAP_VERSION`，再执行：
 
 ```bash
 ./dev restart

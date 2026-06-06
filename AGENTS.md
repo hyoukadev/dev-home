@@ -11,7 +11,8 @@
 - `Containerfile` — 镜像定义：基于 `ghcr.io/nushell/nushell:latest-bookworm` (Debian 12)，ENV locale + 时区设置 + 用户创建 + COPY entrypoint.sh。RUN 仅限纯本地操作，不依赖网络。
 - `.containerignore` — 本地/CI 构建上下文过滤，必须排除 `.env`、`.env.*`、`.git` 和常见私钥文件
 - `entrypoint.sh` — 内置于镜像（`/usr/local/bin/entrypoint.sh`）。Phase 1（root）：Debian apt 换源 → apt 系统依赖与 Intel 核显用户态包 → locale-gen → vendor dir → re-exec 为 dev；Phase 2（dev）：mise + 工具 + ohmynushell 配置 + vendor autoloads + oh-my-tmux
-- 工具版本直接在 entrypoint.sh 中通过 `mise use -g` 指定，无需独立配置文件
+- `scripts/bootstrap-ubuntu-server.sh` — 非镜像 Ubuntu Server 初始化脚本。用普通 sudo 用户执行，apt 安装系统依赖与 Intel 核显用户态包，GitHub release 安装 Nushell，mise 安装工具，配置 ohmynushell、vendor autoloads、oh-my-tmux 和 `~/.profile` PATH；不得直接覆盖已有主机配置，必须先备份非预期目录/文件
+- 工具版本直接在 `entrypoint.sh` 和 `scripts/bootstrap-ubuntu-server.sh` 顶部通过 `mise use -g` 指定，无需独立配置文件；修改默认工具版本时两处必须同步
 - `dev` — 便利脚本，封装 compose 命令，执行 `build`/`rebuild`/`pull`/`start`/`stop`/`restart`/`recreate`/`status`/`logs`/`enter`/`nu`/`sh`/`gpu`/`install`/`clean`/`reset-home`/`purge`
 - `.env` — GITHUB_TOKEN、DEV_HOME_HOST_WORKSPACE、DEV_HOME_GPU/DEV_HOME_DRI_DEVICE，本地文件，gitignore
 
