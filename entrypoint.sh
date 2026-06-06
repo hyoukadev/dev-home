@@ -2,7 +2,7 @@
 set -e
 
 # Re-run user-space bootstrap when this changes.
-BOOTSTRAP_VERSION="2026-05-30.4"
+BOOTSTRAP_VERSION="2026-06-06.1"
 
 OHMYNUSHELL_REPO="git@github.com:hyoukadev/ohmynushell.git"
 OHMYTMUX_REPO="https://github.com/gpakosz/.tmux.git"
@@ -114,6 +114,8 @@ if [ "$(id -u)" = "0" ]; then
             ca-certificates curl git git-lfs openssh-client rsync tmux \
             build-essential clang lld cmake pkg-config libssl-dev \
             unzip zip xz-utils zstd tar gzip sudo jq file less vim locales \
+            vainfo mesa-utils vulkan-tools clinfo libva-drm2 \
+            mesa-va-drivers mesa-vulkan-drivers intel-media-va-driver \
             && rm -rf /var/lib/apt/lists/*
 
         # --- locale-gen ---
@@ -157,8 +159,14 @@ if [ "$(id -u)" = "0" ]; then
         done
     fi
 
-    # Re-exec as dev without creating a su-managed session.
-    exec setpriv --reuid dev --regid "$DEV_PRIMARY_GID" --init-groups env \
+    # Re-exec as dev without creating a su-managed session. GPU device
+    # access in rootless Podman needs the host's supplementary groups.
+    SETPRIV_GROUP_ARGS="--init-groups"
+    if [ "${DEV_HOME_KEEP_GROUPS:-0}" = "1" ] || \
+       [ -d /dev/dri ] || [ -e /dev/kfd ] || ls /dev/nvidia* >/dev/null 2>&1; then
+        SETPRIV_GROUP_ARGS="--keep-groups"
+    fi
+    exec setpriv --reuid dev --regid "$DEV_PRIMARY_GID" "$SETPRIV_GROUP_ARGS" env \
         HOME="$DEV_HOME" USER=dev LOGNAME=dev SHELL=/usr/bin/nu \
         http_proxy="$SAVED_http_proxy" https_proxy="$SAVED_https_proxy" \
         HTTP_PROXY="$SAVED_HTTP_PROXY" HTTPS_PROXY="$SAVED_HTTPS_PROXY" \

@@ -4,6 +4,9 @@ set -e
 NAME=dev-home
 DIR=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 COMPOSE="podman compose --in-pod false -f $DIR/compose.yml"
+GPU_DRI_FALLBACK="/dev/null:/dev/null"
+GPU_KFD_FALLBACK="/dev/zero:/dev/zero"
+GPU_CDI_FALLBACK="/dev/full:/dev/full"
 
 usage() {
   cat <<'EOF'
@@ -22,6 +25,7 @@ Commands:
   enter             Enter container (tmux)
   nu                Enter container (nushell)
   sh                Enter container (POSIX shell)
+  gpu               Show GPU/iGPU passthrough status
   install <tools>   Install global mise tools, e.g. ./dev install node@24 uv@latest
   clean             Stop and remove container and image, preserving dev-home-home
   reset-home        Stop and remove the persistent home volume
@@ -29,6 +33,171 @@ Commands:
 
 EOF
   exit 0
+}
+
+config_value() {
+  key=$1
+  eval "is_set=\${$key+x}"
+  if [ "$is_set" = "x" ]; then
+    eval "printf '%s' \"\${$key}\""
+    return 0
+  fi
+
+  for file in "$DIR/.env" "$DIR/.env.secret"; do
+    [ -f "$file" ] || continue
+    value=$(
+      awk -v key="$key" '
+        /^[[:space:]]*(#|$)/ { next }
+        {
+          line = $0
+          sub(/^[[:space:]]*/, "", line)
+          if (line ~ "^" key "[[:space:]]*=") {
+            sub("^[^=]*=", "", line)
+            sub(/^[[:space:]]*/, "", line)
+            sub(/[[:space:]]*$/, "", line)
+            print line
+            found = 1
+            exit
+          }
+        }
+        END { if (!found) exit 1 }
+      ' "$file"
+    ) || continue
+    case "$value" in
+      \"*\") value=${value#\"}; value=${value%\"} ;;
+      \'*\') value=${value#\'}; value=${value%\'} ;;
+    esac
+    printf '%s' "$value"
+    return 0
+  done
+
+  return 1
+}
+
+cdi_device_available() {
+  vendor=$1
+  for dir in /etc/cdi /var/run/cdi; do
+    [ -d "$dir" ] || continue
+    grep -Rqs "$vendor" "$dir" && return 0
+  done
+  return 1
+}
+
+mark_gpu_enabled() {
+  DEV_HOME_KEEP_GROUPS=1
+  export DEV_HOME_KEEP_GROUPS
+  gpu_enabled=1
+  if [ -z "$gpu_parts" ]; then
+    gpu_parts=$1
+  else
+    gpu_parts="$gpu_parts, $1"
+  fi
+}
+
+configure_gpu() {
+  mode=$(config_value DEV_HOME_GPU || true)
+  mode=${mode:-auto}
+  case "$mode" in
+    auto|none|dri|nvidia|amd) ;;
+    *)
+      echo "DEV_HOME_GPU must be one of auto, none, dri, nvidia, amd; got: $mode" >&2
+      exit 1
+      ;;
+  esac
+
+  manual_dri=$(config_value DEV_HOME_DRI_DEVICE || true)
+  manual_kfd=$(config_value DEV_HOME_KFD_DEVICE || true)
+  manual_cdi=$(config_value DEV_HOME_GPU_CDI_DEVICE || true)
+  gpu_enabled=0
+  gpu_parts=
+  DEV_HOME_KEEP_GROUPS=0
+  export DEV_HOME_KEEP_GROUPS
+
+  if [ "$mode" = "none" ]; then
+    DEV_HOME_DRI_DEVICE=$GPU_DRI_FALLBACK
+    DEV_HOME_KFD_DEVICE=$GPU_KFD_FALLBACK
+    DEV_HOME_GPU_CDI_DEVICE=$GPU_CDI_FALLBACK
+    DEV_HOME_GPU_EFFECTIVE=none
+    export DEV_HOME_DRI_DEVICE DEV_HOME_KFD_DEVICE DEV_HOME_GPU_CDI_DEVICE DEV_HOME_GPU_EFFECTIVE
+    return 0
+  fi
+
+  if [ -n "$manual_dri" ]; then
+    DEV_HOME_DRI_DEVICE=$manual_dri
+    export DEV_HOME_DRI_DEVICE
+    [ "$manual_dri" != "$GPU_DRI_FALLBACK" ] && mark_gpu_enabled "$manual_dri"
+  fi
+  if [ -n "$manual_kfd" ]; then
+    DEV_HOME_KFD_DEVICE=$manual_kfd
+    export DEV_HOME_KFD_DEVICE
+    [ "$manual_kfd" != "$GPU_KFD_FALLBACK" ] && mark_gpu_enabled "$manual_kfd"
+  fi
+  if [ -n "$manual_cdi" ]; then
+    DEV_HOME_GPU_CDI_DEVICE=$manual_cdi
+    export DEV_HOME_GPU_CDI_DEVICE
+    [ "$manual_cdi" != "$GPU_CDI_FALLBACK" ] && mark_gpu_enabled "$manual_cdi"
+  fi
+
+  if [ -z "$manual_dri" ] && { [ "$mode" = "auto" ] || [ "$mode" = "dri" ] || [ "$mode" = "amd" ] || [ "$mode" = "nvidia" ]; }; then
+    if [ -d /dev/dri ]; then
+      DEV_HOME_DRI_DEVICE="/dev/dri:/dev/dri"
+      export DEV_HOME_DRI_DEVICE
+      mark_gpu_enabled "/dev/dri"
+    elif [ "$mode" = "dri" ]; then
+      echo "DEV_HOME_GPU=dri requested, but /dev/dri does not exist on the host." >&2
+      exit 1
+    fi
+  fi
+
+  if [ -z "$manual_kfd" ] && { [ "$mode" = "auto" ] || [ "$mode" = "amd" ]; } && [ -e /dev/kfd ]; then
+    DEV_HOME_KFD_DEVICE="/dev/kfd:/dev/kfd"
+    export DEV_HOME_KFD_DEVICE
+    mark_gpu_enabled "/dev/kfd"
+  fi
+
+  if [ -z "$manual_cdi" ]; then
+    case "$mode" in
+      auto)
+        if cdi_device_available "nvidia.com/gpu"; then
+          DEV_HOME_GPU_CDI_DEVICE="nvidia.com/gpu=all"
+          export DEV_HOME_GPU_CDI_DEVICE
+          mark_gpu_enabled "$DEV_HOME_GPU_CDI_DEVICE"
+        elif cdi_device_available "amd.com/gpu"; then
+          DEV_HOME_GPU_CDI_DEVICE="amd.com/gpu=all"
+          export DEV_HOME_GPU_CDI_DEVICE
+          mark_gpu_enabled "$DEV_HOME_GPU_CDI_DEVICE"
+        fi
+        ;;
+      nvidia)
+        DEV_HOME_GPU_CDI_DEVICE="nvidia.com/gpu=all"
+        export DEV_HOME_GPU_CDI_DEVICE
+        mark_gpu_enabled "$DEV_HOME_GPU_CDI_DEVICE"
+        ;;
+      amd)
+        if cdi_device_available "amd.com/gpu"; then
+          DEV_HOME_GPU_CDI_DEVICE="amd.com/gpu=all"
+          export DEV_HOME_GPU_CDI_DEVICE
+          mark_gpu_enabled "$DEV_HOME_GPU_CDI_DEVICE"
+        fi
+        ;;
+    esac
+  fi
+
+  if [ "$mode" = "amd" ] && [ "$gpu_enabled" = "0" ]; then
+    echo "DEV_HOME_GPU=amd requested, but no AMD CDI, /dev/dri, or /dev/kfd device was found." >&2
+    exit 1
+  fi
+
+  if [ "$gpu_enabled" = "1" ]; then
+    DEV_HOME_GPU_EFFECTIVE=$gpu_parts
+  else
+    DEV_HOME_GPU_EFFECTIVE=none
+  fi
+  export DEV_HOME_GPU_EFFECTIVE
+}
+
+show_gpu_summary() {
+  echo "==> GPU passthrough: $DEV_HOME_GPU_EFFECTIVE"
 }
 
 build() {
@@ -40,15 +209,20 @@ rebuild() {
 }
 
 pull() {
-  if [ -z "${DEV_HOME_IMAGE:-}" ]; then
+  image=$(config_value DEV_HOME_IMAGE || true)
+  if [ -z "$image" ]; then
     echo "DEV_HOME_IMAGE is not set. Add DEV_HOME_IMAGE=ghcr.io/<owner>/<repo>:latest to .env first." >&2
     exit 1
   fi
+  DEV_HOME_IMAGE=$image
+  export DEV_HOME_IMAGE
   $COMPOSE pull
 }
 
 start() {
+  configure_gpu
   echo "==> Starting container..."
+  show_gpu_summary
   $COMPOSE up -d
 }
 
@@ -63,7 +237,9 @@ restart() {
 }
 
 recreate() {
+  configure_gpu
   echo "==> Recreating container..."
+  show_gpu_summary
   $COMPOSE up -d --force-recreate
 }
 
@@ -88,6 +264,35 @@ nu() {
 sh_shell() {
   echo "==> Entering container (sh)..."
   $COMPOSE exec --user dev --workdir /home/dev "$NAME" /bin/sh "$@"
+}
+
+gpu() {
+  configure_gpu
+  show_gpu_summary
+  echo "==> Host GPU device nodes:"
+  ls -ld /dev/dri /dev/kfd /dev/nvidia* 2>/dev/null || true
+  echo "==> Host CDI specs:"
+  find /etc/cdi /var/run/cdi -maxdepth 1 -type f -print 2>/dev/null || true
+  container_ids=$($COMPOSE ps -q 2>/dev/null || true)
+  if [ -z "$container_ids" ]; then
+    echo "==> Container GPU view:"
+    echo "Container is not running. Run ./dev start first."
+    return 0
+  fi
+  echo "==> Container GPU view:"
+  $COMPOSE exec --user dev --workdir /home/dev "$NAME" /bin/sh -lc '
+    id
+    ls -ld /dev/dri /dev/kfd /dev/nvidia* 2>/dev/null || true
+    if command -v nvidia-smi >/dev/null 2>&1; then
+      nvidia-smi -L || true
+    fi
+    if command -v vainfo >/dev/null 2>&1 && [ -e /dev/dri/renderD128 ]; then
+      vainfo --display drm --device /dev/dri/renderD128 2>/dev/null | sed -n "1,20p" || true
+    fi
+    if command -v vulkaninfo >/dev/null 2>&1; then
+      vulkaninfo --summary 2>/dev/null | sed -n "1,40p" || true
+    fi
+  '
 }
 
 install() {
@@ -125,7 +330,7 @@ reset_home() {
 
 [ $# -eq 0 ] && usage
 case "$1" in
-  build|rebuild|pull|start|stop|restart|recreate|status|logs|enter|clean|purge) "$1" ;;
+  build|rebuild|pull|start|stop|restart|recreate|status|logs|enter|gpu|clean|purge) "$1" ;;
   nu) shift; nu "$@" ;;
   sh) shift; sh_shell "$@" ;;
   install) shift; install "$@" ;;

@@ -13,6 +13,7 @@
 - `/workspace` 挂载宿主机项目目录
 - `userns_mode: keep-id` + `/host-ssh:ro` 让容器内 `dev` 用户使用宿主机 SSH key，同时把 `known_hosts` 修正到可读的容器内副本
 - 默认工作目录为 `/home/dev`
+- 可选 GPU/核显透传：自动探测 `/dev/dri`、`/dev/kfd` 和 CDI 设备，支持 Intel/AMD 核显、NVIDIA CDI、AMD CDI
 
 ## 快速开始
 
@@ -44,6 +45,7 @@ cp .env.example .env
 | `./dev enter` | 进入 tmux 会话 |
 | `./dev nu` | 进入 Nushell |
 | `./dev sh` | 进入 POSIX shell |
+| `./dev gpu` | 查看宿主机和容器内 GPU/核显透传状态 |
 | `./dev install node@24 uv@latest` | 安装全局 mise 工具 |
 | `./dev clean` | 删除容器和本地镜像，保留 home volume |
 | `./dev reset-home` | 删除持久化 home volume |
@@ -117,6 +119,40 @@ ssh -T git@github.com
 podman compose build --build-arg DEV_UID=$(id -u) --build-arg DEV_GID=$(id -g)
 ./dev recreate
 ```
+
+## GPU / 核显
+
+`./dev start` 和 `./dev recreate` 会按 `DEV_HOME_GPU` 自动配置 GPU/核显透传。默认 `auto`：
+
+- 宿主机存在 `/dev/dri` 时透传给容器，用于 Intel/AMD 核显、Mesa、VAAPI、Vulkan。
+- 宿主机存在 `/dev/kfd` 时同时透传，用于 AMD ROCm fallback。
+- 宿主机存在 NVIDIA 或 AMD CDI spec 时使用 `nvidia.com/gpu=all` 或 `amd.com/gpu=all`。
+- 没检测到设备时使用安全 dummy device，容器仍可正常启动。
+
+可在 `.env` 中显式设置：
+
+```bash
+DEV_HOME_GPU=auto      # auto | none | dri | nvidia | amd
+# DEV_HOME_DRI_DEVICE=/dev/dri:/dev/dri
+# DEV_HOME_KFD_DEVICE=/dev/kfd:/dev/kfd
+# DEV_HOME_GPU_CDI_DEVICE=nvidia.com/gpu=all
+```
+
+启动或重建后检查：
+
+```bash
+./dev recreate
+./dev gpu
+```
+
+rootless Podman 访问 `/dev/dri` 通常要求启动 Podman 的宿主用户属于 `render`/`video` 组；本项目在 compose 中启用 `group_add: keep-groups`，entrypoint 会在实际启用 GPU 时保留这些补充组。NVIDIA 需要宿主机安装驱动和 NVIDIA Container Toolkit，并生成 CDI spec：
+
+```bash
+sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
+nvidia-ctk cdi list
+```
+
+AMD CDI 可使用 AMD Container Toolkit 生成 `amd.com/gpu=*` 设备；没有 AMD CDI 时，`auto` 会退回 `/dev/dri` + `/dev/kfd`。容器内预装了 `vainfo`、`vulkaninfo`、`clinfo` 和 Mesa/VAAPI/Vulkan 用户态驱动包，但不会预装 CUDA 或 ROCm SDK。
 
 ## NAS 直接使用镜像
 
@@ -215,5 +251,5 @@ DEV_HOME_IMAGE=ghcr.io/<owner>/<repo>:latest
 
 - 只通过 `podman compose --in-pod false` 编排和进入容器，避免 Podman pod 与 `userns_mode: keep-id` 冲突
 - `Containerfile` 不做网络安装，只保留本地操作
-- `entrypoint.sh` 负责运行时 apt、mise、Nushell、tmux 初始化
+- `entrypoint.sh` 负责运行时 apt、GPU 用户态包、mise、Nushell、tmux 初始化
 - tmux 使用 `nu --login`，确保 Nushell 环境和 PATH 正常加载
